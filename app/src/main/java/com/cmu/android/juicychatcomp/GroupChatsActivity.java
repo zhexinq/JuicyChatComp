@@ -12,39 +12,82 @@ import com.cmu.android.juicychatcomp.DB.Group;
 import com.cmu.android.juicychatcomp.DB.Message;
 import com.cmu.android.juicychatcomp.helper.SimpleItemTouchHelperCallback;
 
+import java.util.Date;
 import java.util.List;
 
 public class GroupChatsActivity extends AppCompatActivity {
     private final String TAG = GroupChatsActivity.class.getSimpleName();
-    private RecyclerListAdapter mRecyclerListAdapter;
+    private GroupRecyclerListAdapter mGroupRecyclerListAdapter;
     private RecyclerView mRecyclerView;
     private ItemTouchHelper mItemTouchHelper;
-
-    private static final String[] STRINGS = new String[]{
-            "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_enter_chat);
 
+        // insert some dummy data in database
+        insertDummyData();
+        // query groups information
+        DatabaseConnector connector = DatabaseConnector.getInstance(this);
+        List<Group> groups = connector.getAllGroupsOrderByCreateTime();
+        // update the adapter for group list view
+        mGroupRecyclerListAdapter = new GroupRecyclerListAdapter(groups);
+
+        // configure the recyclerView
+        mRecyclerView = (RecyclerView) findViewById(R.id.recycler_view);
+        mRecyclerView.setHasFixedSize(true);
+        mRecyclerView.setAdapter(mGroupRecyclerListAdapter);
+        mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        // attach callbacks to recycler view for movement
+        ItemTouchHelper.Callback callback = new SimpleItemTouchHelperCallback(mGroupRecyclerListAdapter);
+        mItemTouchHelper = new ItemTouchHelper(callback);
+        mItemTouchHelper.attachToRecyclerView(mRecyclerView);
+    }
+
+    // TEST SECTION
+    // insert some dummy data (group, message)
+    private void insertDummyData() {
+        DatabaseConnector connector = DatabaseConnector.getInstance(this);
+        // delete all records
+        connector.deleteAllRecords();
+        // insert groups and messages
+        for (int i = 0; i < 3; i++) {
+            Group g = new Group(i, new Date().getTime());
+            connector.addGroup(g);
+            for (int j = 0; j < 2; j++) {
+                Message m = new Message(g, "test message", "test owner", new Date().getTime());
+                connector.addMessage(m);
+            }
+        }
+    }
+
+    private static final String[] STRINGS = new String[]{
+            "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"
+    };
+
+    private static final Group[] GROUPS = new Group[] {
+            new Group(1, 1), new Group(2, 2), new Group(3, 3)
+    };
+
+    // insert sample data, and simple tests
+    private void insertDataAndTest() {
         // TEST BEGIN
         // sample data for testing db
         Group group1 = new Group();
         group1.groupCode = 1;
-        group1.createTime = "1991-05-27 01:00:21";
+        group1.createTime = new Date().getTime();
         Group group2 = new Group();
         group2.groupCode = 2;
-        group2.createTime = "1991-08-27 01:00:21";
+        group2.createTime = new Date().getTime();
 
         Message message1 = new Message();
-        message1.createTime = "1991-05-27 02:00:21";
+        message1.createTime = new Date().getTime();
         message1.owner = "zhexinq";
         message1.message = "Juicy Meeting is awesome";
         message1.group = group1;
         Message message2 = new Message();
-        message2.createTime = "1991-05-27 11:00:21";
+        message2.createTime = new Date().getTime();
         message2.owner = "zhexinq";
         message2.message = "Agreed";
         message2.group = group1;
@@ -74,16 +117,6 @@ public class GroupChatsActivity extends AppCompatActivity {
             Log.d(TAG, "group: " + g.groupCode + " " + g.createTime);
         }
         // TEST END
-
-        mRecyclerListAdapter = new RecyclerListAdapter(STRINGS);
-
-        RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
-        recyclerView.setHasFixedSize(true);
-        recyclerView.setAdapter(mRecyclerListAdapter);
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-
-        ItemTouchHelper.Callback callback = new SimpleItemTouchHelperCallback(mRecyclerListAdapter);
-        mItemTouchHelper = new ItemTouchHelper(callback);
-        mItemTouchHelper.attachToRecyclerView(recyclerView);
     }
+
 }

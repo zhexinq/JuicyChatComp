@@ -8,5 +8,15 @@ public class Message {
     public Group group;
     public String message;
     public String owner;
-    public String createTime;
+    public long createTime;
+
+    public Message() {
+    }
+
+    public Message(Group group, String message, String owner, long createTime) {
+        this.group = group;
+        this.message = message;
+        this.owner = owner;
+        this.createTime = createTime;
+    }
 }

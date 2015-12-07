@@ -6,5 +6,13 @@ package com.cmu.android.juicychatcomp.DB;
  */
 public class Group {
     public int groupCode;
-    public String createTime;
+    public long createTime;
+
+    public Group() {
+    }
+
+    public Group(int groupCode, long createTime) {
+        this.groupCode = groupCode;
+        this.createTime = createTime;
+    }
 }
