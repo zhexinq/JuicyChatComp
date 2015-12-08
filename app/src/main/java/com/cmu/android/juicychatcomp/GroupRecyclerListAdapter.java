@@ -1,6 +1,7 @@
 package com.cmu.android.juicychatcomp;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -52,7 +53,7 @@ public class GroupRecyclerListAdapter extends RecyclerView.Adapter<GroupRecycler
     public void onBindViewHolder(final ItemViewHolder holder, int position) {
        // holder.textView.setText(mItems.get(position));
         // change miliseconds to date for presentation
-        SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy");
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
         String dateString = formatter.format(new Date(mGroups.get(position).createTime));
         holder.textView.setText(dateString);
         // store the group code for db reference
@@ -94,6 +95,20 @@ public class GroupRecyclerListAdapter extends RecyclerView.Adapter<GroupRecycler
             textView = (TextView) itemView.findViewById(R.id.chat_group_code);
             imageView = (ImageView) itemView.findViewById(R.id.chat_group_img);
             viewHolderContext = itemView.getContext();
+
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent i = new Intent(viewHolderContext, ChatroomActivity.class);
+                    // put corresponding group code
+                    int groupCode = Integer.parseInt((String)textView.getTag());
+                    i.putExtra(ChatroomActivity.CHATROOM_GROUP, groupCode);
+                    // change to chatroom
+                    viewHolderContext.startActivity(i);
+                    Toast.makeText(viewHolderContext, "Group " + textView.getTag() + " clicked",
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
         }
 
         @Override
@@ -107,5 +122,6 @@ public class GroupRecyclerListAdapter extends RecyclerView.Adapter<GroupRecycler
         public void onItemClear() {
             itemView.setBackgroundColor(0);
         }
+
     }
 }

@@ -9,14 +9,16 @@ public class Message {
     public String message;
     public String owner;
     public long createTime;
+    public int isSelf;
 
     public Message() {
     }
 
-    public Message(Group group, String message, String owner, long createTime) {
+    public Message(Group group, String message, String owner, long createTime, int isSelf) {
         this.group = group;
         this.message = message;
         this.owner = owner;
         this.createTime = createTime;
+        this.isSelf = isSelf;
     }
 }

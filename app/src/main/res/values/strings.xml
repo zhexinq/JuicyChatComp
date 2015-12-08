@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">JuicyChatComp</string>
+<string name="app_name">JuicyChatComp</string>
+<string name="send_btn">SEND</string>
 </resources>

@@ -35,6 +35,7 @@ public class DatabaseConnector extends SQLiteOpenHelper{
     private static final String KEY_MSG_MSG = "message";
     private static final String KEY_MSG_OWNER = "owner";
     private static final String KEY_MSG_TIME = "sendTime";
+    private static final String KEY_MSG_IS_SELF = "isSelf";
 
     public static synchronized DatabaseConnector getInstance(Context context) {
         // avoid leak activity context
@@ -60,16 +61,17 @@ public class DatabaseConnector extends SQLiteOpenHelper{
     public void onCreate(SQLiteDatabase db) {
         String CREATE_GROUP_TABLE = "CREATE TABLE " + TABLE_GROUP +
                 "(" +
-                    KEY_GROUP_CODE + " INTEGER PRIMARY KEY," +
-                    KEY_GROUP_TIME + " INTEGER" +
+                KEY_GROUP_CODE + " INTEGER PRIMARY KEY," +
+                KEY_GROUP_TIME + " INTEGER" +
                 ")";
 
         String CREATE_MSG_TABLE = "CREATE TABLE " + TABLE_MSG +
                 "(" +
-                    KEY_MSG_GROUP_CODE_FK + " INTEGER REFERENCES " + TABLE_GROUP + "," +
-                    KEY_MSG_MSG + " TEXT," +
-                    KEY_MSG_OWNER + " TEXT," +
-                    KEY_MSG_TIME + " INTEGER" +
+                KEY_MSG_GROUP_CODE_FK + " INTEGER REFERENCES " + TABLE_GROUP + "," +
+                KEY_MSG_MSG + " TEXT," +
+                KEY_MSG_OWNER + " TEXT," +
+                KEY_MSG_TIME + " INTEGER," +
+                KEY_MSG_IS_SELF + " INTEGER" +
                 ")";
 
         Log.d(TAG, "create group table: " + CREATE_GROUP_TABLE);
@@ -123,6 +125,7 @@ public class DatabaseConnector extends SQLiteOpenHelper{
             values.put(KEY_MSG_MSG, message.message);
             values.put(KEY_MSG_OWNER, message.owner);
             values.put(KEY_MSG_TIME, message.createTime);
+            values.put(KEY_MSG_IS_SELF, message.isSelf);
 
             db.insertOrThrow(TABLE_MSG, null, values);
             db.setTransactionSuccessful();
@@ -138,7 +141,7 @@ public class DatabaseConnector extends SQLiteOpenHelper{
         List<Group> groups = new ArrayList<>();
 
         // SELECT * FROM group ORDER BY date(createTime) DESC
-        String GROUP_SELECT_QUERY = String.format("SELECT * FROM %s ORDER BY datetime(%s) DESC",
+        String GROUP_SELECT_QUERY = String.format("SELECT * FROM %s ORDER BY %s DESC",
                 TABLE_GROUP, KEY_GROUP_TIME);
         // get the database
         SQLiteDatabase db = getReadableDatabase();
@@ -148,7 +151,7 @@ public class DatabaseConnector extends SQLiteOpenHelper{
                 do {
                     Group newGroup = new Group();
                     newGroup.groupCode = cursor.getInt(cursor.getColumnIndex(KEY_GROUP_CODE));
-                    newGroup.createTime = cursor.getInt(cursor.getColumnIndex(KEY_GROUP_TIME));
+                    newGroup.createTime = cursor.getLong(cursor.getColumnIndex(KEY_GROUP_TIME));
 
                     groups.add(newGroup);
                 } while (cursor.moveToNext());
@@ -168,8 +171,8 @@ public class DatabaseConnector extends SQLiteOpenHelper{
         List<Message> messages = new ArrayList<>();
 
         // SELECT * FROM message NATURAL JOIN group
-        String MESSAGE_SELECT_QUERY = String.format("SELECT * FROM %s NATURAL JOIN %s ORDER BY datetime(%s) DESC",
-                                                        TABLE_MSG, TABLE_GROUP, KEY_MSG_TIME);
+        String MESSAGE_SELECT_QUERY = String.format("SELECT * FROM %s NATURAL JOIN %s WHERE %s.%s=%d ORDER BY %s ASC",
+                TABLE_MSG, TABLE_GROUP, TABLE_GROUP, KEY_MSG_GROUP_CODE_FK, groupCode, KEY_MSG_TIME);
         // get the database
         SQLiteDatabase db = getReadableDatabase();
         Cursor cursor = db.rawQuery(MESSAGE_SELECT_QUERY, null);
@@ -178,13 +181,14 @@ public class DatabaseConnector extends SQLiteOpenHelper{
                 do {
                     Group newGroup = new Group();
                     newGroup.groupCode = cursor.getInt(cursor.getColumnIndex(KEY_GROUP_CODE));
-                    newGroup.createTime = cursor.getInt(cursor.getColumnIndex(KEY_GROUP_TIME));
+                    newGroup.createTime = cursor.getLong(cursor.getColumnIndex(KEY_GROUP_TIME));
                     Message newMsg = new Message();
 
                     newMsg.group = newGroup;
                     newMsg.message = cursor.getString(cursor.getColumnIndex(KEY_MSG_MSG));
                     newMsg.owner = cursor.getString(cursor.getColumnIndex(KEY_MSG_OWNER));
-                    newMsg.createTime = cursor.getInt(cursor.getColumnIndex(KEY_MSG_TIME));
+                    newMsg.createTime = cursor.getLong(cursor.getColumnIndex(KEY_MSG_TIME));
+                    newMsg.isSelf = cursor.getInt(cursor.getColumnIndex(KEY_MSG_IS_SELF));
 
                     messages.add(newMsg);
                 } while (cursor.moveToNext());
@@ -205,9 +209,9 @@ public class DatabaseConnector extends SQLiteOpenHelper{
         db.beginTransaction();
         try {
             String DELETE_GROUP_QUERY = String.format("DELETE FROM %s WHERE %s=%d",
-                            TABLE_GROUP, KEY_GROUP_CODE, groupCode);
+                    TABLE_GROUP, KEY_GROUP_CODE, groupCode);
             String DELETE_MSG_QUERY = String.format("DELETE FROM %s WHERE %s=%d",
-                            TABLE_MSG, KEY_GROUP_CODE, groupCode);
+                    TABLE_MSG, KEY_GROUP_CODE, groupCode);
             db.execSQL(DELETE_MSG_QUERY);
             db.execSQL(DELETE_GROUP_QUERY);
             db.setTransactionSuccessful();

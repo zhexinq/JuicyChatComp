@@ -55,8 +55,13 @@ public class GroupChatsActivity extends AppCompatActivity {
         for (int i = 0; i < 3; i++) {
             Group g = new Group(i, new Date().getTime());
             connector.addGroup(g);
-            for (int j = 0; j < 2; j++) {
-                Message m = new Message(g, "test message", "test owner", new Date().getTime());
+            for (int j = 0; j < 4; j++) {
+                try {
+                    Thread.sleep(1000);                 //1000 milliseconds is one second.
+                } catch(InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+                Message m = new Message(g, "test message", "test owner", new Date().getTime(), j % 2);
                 connector.addMessage(m);
             }
         }
