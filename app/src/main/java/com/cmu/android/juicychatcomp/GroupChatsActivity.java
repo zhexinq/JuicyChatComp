@@ -1,11 +1,13 @@
 package com.cmu.android.juicychatcomp;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
 import android.util.Log;
+import android.view.View;
 
 import com.cmu.android.juicychatcomp.DB.DatabaseConnector;
 import com.cmu.android.juicychatcomp.DB.Group;
@@ -26,8 +28,8 @@ public class GroupChatsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_enter_chat);
 
-        // insert some dummy data in database
-        insertDummyData();
+//        // insert some dummy data in database
+//        insertDummyData();
         // query groups information
         DatabaseConnector connector = DatabaseConnector.getInstance(this);
         List<Group> groups = connector.getAllGroupsOrderByCreateTime();
@@ -45,6 +47,20 @@ public class GroupChatsActivity extends AppCompatActivity {
         mItemTouchHelper.attachToRecyclerView(mRecyclerView);
     }
 
+    // invoked when createGroup button clicked
+    public void createGroup(View view) {
+        Intent i = new Intent(this, JoinGroupActivity.class);
+        i.putExtra(ChatroomActivity.CHAT_ACTION, "create");
+        startActivity(i);
+    }
+
+    // invoked when join button clicked
+    public  void joinGroup(View vie) {
+        Intent i = new Intent(this, JoinGroupActivity.class);
+        i.putExtra(ChatroomActivity.CHAT_ACTION, "join");
+        startActivity(i);
+    }
+
     // TEST SECTION
     // insert some dummy data (group, message)
     private void insertDummyData() {
@@ -56,11 +72,11 @@ public class GroupChatsActivity extends AppCompatActivity {
             Group g = new Group(i, new Date().getTime());
             connector.addGroup(g);
             for (int j = 0; j < 4; j++) {
-                try {
-                    Thread.sleep(1000);                 //1000 milliseconds is one second.
-                } catch(InterruptedException ex) {
-                    Thread.currentThread().interrupt();
-                }
+//                try {
+//                    Thread.sleep(1000);                 //1000 milliseconds is one second.
+//                } catch(InterruptedException ex) {
+//                    Thread.currentThread().interrupt();
+//                }
                 Message m = new Message(g, "test message", "test owner", new Date().getTime(), j % 2);
                 connector.addMessage(m);
             }
