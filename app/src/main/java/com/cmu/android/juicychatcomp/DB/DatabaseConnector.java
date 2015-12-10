@@ -166,6 +166,34 @@ public class DatabaseConnector extends SQLiteOpenHelper{
         return groups;
     }
 
+    // get group by group code, if not exist return null
+    public Group getGroupByGroupCode(int groupCode) {
+        Group result = null;
+        // SELECT * FROM message WHERE groupCode=groupCode
+        String GROUP_SELECT_QUERY = String.format("SELECT * FROM %s WHERE %s=%d",
+                TABLE_GROUP, KEY_GROUP_CODE, groupCode);
+        // get the database
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.rawQuery(GROUP_SELECT_QUERY, null);
+        try {
+            if (cursor.moveToFirst()) {
+                do {
+                    Group newGroup = new Group();
+                    newGroup.groupCode = cursor.getInt(cursor.getColumnIndex(KEY_GROUP_CODE));
+                    newGroup.createTime = cursor.getLong(cursor.getColumnIndex(KEY_GROUP_TIME));
+                    result = newGroup;
+                } while (cursor.moveToNext());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error querying messages from db");
+        } finally {
+            if (cursor != null && !cursor.isClosed()) {
+                cursor.close();
+            }
+        }
+        return result;
+    }
+
     // query message info by group code
     public List<Message> getAllMessagesByGroupOrderByTime(int groupCode) {
         List<Message> messages = new ArrayList<>();

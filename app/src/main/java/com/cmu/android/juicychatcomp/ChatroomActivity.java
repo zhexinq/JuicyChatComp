@@ -6,16 +6,26 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
 import com.cmu.android.juicychatcomp.DB.DatabaseConnector;
+import com.cmu.android.juicychatcomp.DB.Group;
 import com.cmu.android.juicychatcomp.DB.Message;
+import com.cmu.android.juicychatcomp.util.ChatUtil;
 import com.cmu.android.juicychatcomp.util.WsConfig;
 import com.codebutler.android_websockets.WebSocketClient;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.net.URI;
 import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -28,6 +38,21 @@ public class ChatroomActivity extends AppCompatActivity {
     private List<Message> mMessages;
     private MessageListAdapter mMessageListAdapter;
     private WebSocketClient client;
+    // utils
+    private ChatUtil utils;
+    // flag to identify the kind of json response on the client side
+    public static final String FLAG_SELF = "self",
+            FLAG_NEW = "new",
+            FLAG_MESSAGE = "message",
+            FLAG_EXIT = "exit",
+            FLAG_DELETE_GROUP = "delete";
+    // TODO: user name should get from juicyBackend or stored as sharePreference
+    public static final String usrName = "juicer";
+    // chat room views
+    private Button btnSend;
+    private EditText inputMsg;
+    // chat room param
+    String groupCode;
 
 
     @Override
@@ -37,11 +62,12 @@ public class ChatroomActivity extends AppCompatActivity {
 
         // get corresponding group
         Bundle extras = getIntent().getExtras();
-        int groupCode = extras.getInt(CHATROOM_GROUP);
+//        groupCode = extras.getString(CHATROOM_GROUP);
+        groupCode = "1";
 
         // using corresponding group to query messages
         DatabaseConnector connector = DatabaseConnector.getInstance(this);
-        mMessages = connector.getAllMessagesByGroupOrderByTime(groupCode);
+        mMessages = new ArrayList<>(connector.getAllMessagesByGroupOrderByTime(Integer.parseInt(groupCode)));
 
         // to debug
         Toast.makeText(this, "get " + mMessages.size() + " messages", Toast.LENGTH_SHORT).show();
@@ -53,7 +79,22 @@ public class ChatroomActivity extends AppCompatActivity {
         msgListView = (ListView) findViewById(R.id.list_view_messages);
         msgListView.setAdapter(mMessageListAdapter);
 
-        String queryParams = String.format("name=%s&groupCode=%s&action=%s&isOldUser=%s", "juicer", 1, "create", "false");
+        // find the input views
+        btnSend = (Button) findViewById(R.id.btnSend);
+        inputMsg = (EditText) findViewById(R.id.inputMsg);
+        // sending message when "send" pressed
+        btnSend.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String toSend = utils.getSendMessageJSON(inputMsg.getText().toString(), groupCode);
+                sendMessageToServer(toSend);
+                inputMsg.setText("");
+            }
+        });
+
+        // init utils
+        utils = new ChatUtil(this);
+        String queryParams = String.format("name=%s&groupCode=%s&action=%s&isOldUser=%s", usrName, 1, "create", "false");
         client = new WebSocketClient(URI.create(WsConfig.URL_WEBSOCKET
                 + URLEncoder.encode(queryParams)), new WebSocketClient.Listener() {
             @Override
@@ -87,7 +128,7 @@ public class ChatroomActivity extends AppCompatActivity {
                 showToast(message);
 
                 // clear the session id from shared preferences
-//                utils.storeSessionId(null);
+                utils.storeSessionId(null);
             }
 
             @Override
@@ -102,8 +143,84 @@ public class ChatroomActivity extends AppCompatActivity {
         client.connect();
     }
 
-    private void parseMessage(String message) {
+    private void parseMessage(final String msg) {
+        DatabaseConnector connector = DatabaseConnector.getInstance(this);
+        try {
+            JSONObject jObj = new JSONObject(msg);
 
+            // JSON node 'flag'
+            String flag = jObj.getString("flag");
+
+            // if flag is 'self', this JSON contains session id
+            if (flag.equalsIgnoreCase(FLAG_SELF)) {
+
+                String sessionId = jObj.getString("sessionId");
+
+                // Save the session id in shared preferences
+                utils.storeSessionId(sessionId);
+
+                Log.e(TAG, "Your session id: " + utils.getSessionId());
+
+                String result = jObj.getString("message");
+                if (result.equals("create reject"))
+                    client.disconnect();
+
+            } else if (flag.equalsIgnoreCase(FLAG_NEW)) {
+                // If the flag is 'new', new person joined the room
+                String name = jObj.getString("name");
+                String message = jObj.getString("message");
+
+                // number of people online
+                String onlineCount = jObj.getString("onlineCount");
+
+                showToast(name + message + ". Currently " + onlineCount
+                        + " people online!");
+
+            } else if (flag.equalsIgnoreCase(FLAG_MESSAGE)) {
+                // if the flag is 'message', new message received
+                String fromName = usrName;
+                String message = jObj.getString("message");
+                String sessionId = jObj.getString("sessionId");
+                String groupCode = jObj.getString("groupCode");
+                int isSelf = 1;
+
+                // Checking if the message was sent by you
+                if (!sessionId.equals(utils.getSessionId())) {
+                    fromName = jObj.getString("name");
+                    isSelf = 0;
+                }
+
+                // get corresponding group
+                Group g = connector.getGroupByGroupCode(Integer.parseInt(groupCode));
+
+                Message m = new Message(g, message, fromName, new Date().getTime(), isSelf);
+
+                // Appending the message to chat list
+                appendMessage(m);
+
+                // Save the message to database
+                connector.addMessage(m);
+            } else if (flag.equalsIgnoreCase(FLAG_EXIT)) {
+                // If the flag is 'exit', somebody left the conversation
+                String name = jObj.getString("name");
+                String message = jObj.getString("message");
+
+                showToast(name + message);
+            }
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    /**
+     * Method to send message to web socket server
+     * */
+    private void sendMessageToServer(String message) {
+        if (client != null && client.isConnected()) {
+            client.send(message);
+        }
     }
 
     /**
