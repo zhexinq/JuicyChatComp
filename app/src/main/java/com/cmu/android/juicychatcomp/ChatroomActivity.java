@@ -52,7 +52,9 @@ public class ChatroomActivity extends AppCompatActivity {
     private Button btnSend;
     private EditText inputMsg;
     // chat room param
-    String groupCode;
+    private String groupCode;
+    private String action;
+    private String isOldUser;
 
 
     @Override
@@ -60,9 +62,12 @@ public class ChatroomActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chatroom);
 
-        // get corresponding group
+        // get corresponding group info
         Bundle extras = getIntent().getExtras();
         groupCode = extras.getString(CHATROOM_GROUP);
+        action = extras.getString(CHAT_ACTION);
+        isOldUser = extras.getString(IS_OLD_USER);
+        Log.e(TAG, "isOldUser: " + isOldUser);
 
         // using corresponding group to query messages
         DatabaseConnector connector = DatabaseConnector.getInstance(this);
@@ -94,7 +99,7 @@ public class ChatroomActivity extends AppCompatActivity {
         // init utils
         utils = new ChatUtil(this);
         String queryParams = String.format("name=%s&groupCode=%s&action=%s&isOldUser=%s",
-                usrName, groupCode, "create", "false");
+                usrName, groupCode, action, isOldUser);
         client = new WebSocketClient(URI.create(WsConfig.URL_WEBSOCKET
                 + URLEncoder.encode(queryParams)), new WebSocketClient.Listener() {
             @Override
@@ -157,8 +162,10 @@ public class ChatroomActivity extends AppCompatActivity {
             if (flag.equalsIgnoreCase(FLAG_SELF)) {
                 // if reject disconnect
                 String result = jObj.getString("message");
-                if (result.equals("reject"))
-                    client.disconnect();
+                if (result.equals("reject")) {
+                    showToast("Group has been used or doesn't exists");
+                    finish();
+                }
                 // if accept store group in db if not already
                 else if (connector.getGroupByGroupCode(groupCode) == null) {
                     connector.addGroup(new Group(groupCode, new Date().getTime()));

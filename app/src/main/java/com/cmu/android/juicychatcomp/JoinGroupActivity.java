@@ -7,6 +7,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 
+import com.cmu.android.juicychatcomp.DB.DatabaseConnector;
+
 public class JoinGroupActivity extends AppCompatActivity {
     private static final String TAG = JoinGroupActivity.class.getSimpleName();
     private String chatAction;
@@ -37,6 +39,14 @@ public class JoinGroupActivity extends AppCompatActivity {
         Log.e(TAG, "get chat group code: " + groupCode);
         i.putExtra(ChatroomActivity.CHATROOM_GROUP, groupCode);
         i.putExtra(ChatroomActivity.CHAT_ACTION, chatAction);
+        // determine whether is old user
+        DatabaseConnector connector = DatabaseConnector.getInstance(this);
+        String isOldUser;
+        if (connector.getGroupByGroupCode(Integer.parseInt(groupCode)) != null)
+            isOldUser = "true";
+        else
+            isOldUser = "false";
+        i.putExtra(ChatroomActivity.IS_OLD_USER, isOldUser);
         startActivity(i);
     }
 
