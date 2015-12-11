@@ -34,6 +34,7 @@ public class JoinGroupActivity extends AppCompatActivity {
         // pass group code and chat action to the chat room session
         Intent i = new Intent(this, ChatroomActivity.class);
         String groupCode = groupCodeEditText.getText().toString();
+        Log.e(TAG, "get chat group code: " + groupCode);
         i.putExtra(ChatroomActivity.CHATROOM_GROUP, groupCode);
         i.putExtra(ChatroomActivity.CHAT_ACTION, chatAction);
         startActivity(i);

@@ -62,8 +62,7 @@ public class ChatroomActivity extends AppCompatActivity {
 
         // get corresponding group
         Bundle extras = getIntent().getExtras();
-//        groupCode = extras.getString(CHATROOM_GROUP);
-        groupCode = "1";
+        groupCode = extras.getString(CHATROOM_GROUP);
 
         // using corresponding group to query messages
         DatabaseConnector connector = DatabaseConnector.getInstance(this);
@@ -94,13 +93,12 @@ public class ChatroomActivity extends AppCompatActivity {
 
         // init utils
         utils = new ChatUtil(this);
-        String queryParams = String.format("name=%s&groupCode=%s&action=%s&isOldUser=%s", usrName, 1, "create", "false");
+        String queryParams = String.format("name=%s&groupCode=%s&action=%s&isOldUser=%s",
+                usrName, groupCode, "create", "false");
         client = new WebSocketClient(URI.create(WsConfig.URL_WEBSOCKET
                 + URLEncoder.encode(queryParams)), new WebSocketClient.Listener() {
             @Override
-            public void onConnect() {
-
-            }
+            public void onConnect() {}
 
             /**
              * On receiving the message from web socket server
@@ -110,7 +108,6 @@ public class ChatroomActivity extends AppCompatActivity {
                 Log.d(TAG, String.format("Got string message! %s", message));
 
                 parseMessage(message);
-
             }
 
             @Override
@@ -144,26 +141,32 @@ public class ChatroomActivity extends AppCompatActivity {
     }
 
     private void parseMessage(final String msg) {
+        // reference to local db
         DatabaseConnector connector = DatabaseConnector.getInstance(this);
         try {
             JSONObject jObj = new JSONObject(msg);
 
             // JSON node 'flag'
             String flag = jObj.getString("flag");
+            int groupCode = Integer.parseInt(jObj.getString("groupCode"));
+            String sessionId = jObj.getString("sessionId");
+            Log.e(TAG, String.format("get flag: %s, group code: %d, session id: %s",
+                    flag, groupCode, sessionId));
 
             // if flag is 'self', this JSON contains session id
             if (flag.equalsIgnoreCase(FLAG_SELF)) {
-
-                String sessionId = jObj.getString("sessionId");
+                // if reject disconnect
+                String result = jObj.getString("message");
+                if (result.equals("reject"))
+                    client.disconnect();
+                // if accept store group in db if not already
+                else if (connector.getGroupByGroupCode(groupCode) == null) {
+                    connector.addGroup(new Group(groupCode, new Date().getTime()));
+                }
 
                 // Save the session id in shared preferences
                 utils.storeSessionId(sessionId);
-
                 Log.e(TAG, "Your session id: " + utils.getSessionId());
-
-                String result = jObj.getString("message");
-                if (result.equals("create reject"))
-                    client.disconnect();
 
             } else if (flag.equalsIgnoreCase(FLAG_NEW)) {
                 // If the flag is 'new', new person joined the room
@@ -180,8 +183,7 @@ public class ChatroomActivity extends AppCompatActivity {
                 // if the flag is 'message', new message received
                 String fromName = usrName;
                 String message = jObj.getString("message");
-                String sessionId = jObj.getString("sessionId");
-                String groupCode = jObj.getString("groupCode");
+
                 int isSelf = 1;
 
                 // Checking if the message was sent by you
@@ -190,9 +192,8 @@ public class ChatroomActivity extends AppCompatActivity {
                     isSelf = 0;
                 }
 
-                // get corresponding group
-                Group g = connector.getGroupByGroupCode(Integer.parseInt(groupCode));
-
+                // get corresponding group and crete message pojo
+                Group g = connector.getGroupByGroupCode(groupCode);
                 Message m = new Message(g, message, fromName, new Date().getTime(), isSelf);
 
                 // Appending the message to chat list
