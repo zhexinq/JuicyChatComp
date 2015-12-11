@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,11 +16,16 @@ import com.cmu.android.juicychatcomp.DB.DatabaseConnector;
 import com.cmu.android.juicychatcomp.DB.Group;
 import com.cmu.android.juicychatcomp.helper.ItemTouchHelperAdapter;
 import com.cmu.android.juicychatcomp.helper.ItemTouchHelperViewHolder;
+import com.cmu.android.juicychatcomp.util.WsConfig;
+import com.codebutler.android_websockets.WebSocketClient;
 
+import java.net.URI;
+import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Recycle List Adpater to show chat groups
@@ -27,6 +33,7 @@ import java.util.List;
  */
 public class GroupRecyclerListAdapter extends RecyclerView.Adapter<GroupRecyclerListAdapter.ItemViewHolder>
         implements ItemTouchHelperAdapter {
+    private static final String TAG = GroupRecyclerListAdapter.class.getSimpleName();
 
     private static final String[] STRINGS = new String[]{
             "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"
@@ -66,13 +73,18 @@ public class GroupRecyclerListAdapter extends RecyclerView.Adapter<GroupRecycler
         Group group = mGroups.get(position);
         int groupCode = group.groupCode;
 
-        // TODO: remove the group from db
+        // remove the group from db
         mGroups.remove(position);
         notifyItemRemoved(position);
         DatabaseConnector connector = DatabaseConnector.getInstance(mContext);
         connector.deleteChatGroup(groupCode);
         // TODO: tell chat server to decrement member of the group
-
+        DeleteChatGroupWSListener listener =
+                new DeleteChatGroupWSListener(ChatroomActivity.usrName, "delete", String.valueOf(groupCode));
+        WebSocketClient client = new WebSocketClient(
+                URI.create(WsConfig.URL_WEBSOCKET + URLEncoder.encode(listener.getQueryParams())),
+                listener, null);
+        client.connect();
     }
 
     @Override
@@ -131,5 +143,46 @@ public class GroupRecyclerListAdapter extends RecyclerView.Adapter<GroupRecycler
             itemView.setBackgroundColor(0);
         }
 
+    }
+
+    // helper websocket class for deleting group records on chat server
+    private class DeleteChatGroupWSListener implements WebSocketClient.Listener {
+        private String queryParams;
+
+        public DeleteChatGroupWSListener(String usrName, String action, String groupCode) {
+            queryParams = String.format("name=%s&groupCode=%s&action=%s",
+                    usrName, groupCode, action);
+        }
+
+        @Override
+        public void onConnect() {
+            Log.e(TAG, "Connected to chat server for delete group");
+        }
+
+        @Override
+        public void onMessage(String message) {
+            Log.e(TAG, "Get message: " + message);
+        }
+
+        @Override
+        public void onMessage(byte[] data) {
+
+        }
+
+        @Override
+        public void onError(Exception error) {
+            Log.e(TAG, "Error! : " + error);
+        }
+
+        @Override
+        public void onDisconnect(int code, String reason) {
+            String message = String.format(Locale.US,
+                    "Disconnected! Code: %d Reason: %s", code, reason);
+            Log.e(TAG, message);
+        }
+
+        public String getQueryParams() {
+            return queryParams;
+        }
     }
 }
