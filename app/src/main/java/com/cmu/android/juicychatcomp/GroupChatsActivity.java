@@ -22,6 +22,14 @@ public class GroupChatsActivity extends AppCompatActivity {
     private GroupRecyclerListAdapter mGroupRecyclerListAdapter;
     private RecyclerView mRecyclerView;
     private ItemTouchHelper mItemTouchHelper;
+    private List<Group> mGroups;
+
+    // invoked when join button clicked
+    public  void joinGroup(View vie) {
+        Intent i = new Intent(this, JoinGroupActivity.class);
+        i.putExtra(ChatroomActivity.CHAT_ACTION, "join");
+        startActivity(i);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,9 +40,9 @@ public class GroupChatsActivity extends AppCompatActivity {
 //        insertDummyData();
         // query groups information
         DatabaseConnector connector = DatabaseConnector.getInstance(this);
-        List<Group> groups = connector.getAllGroupsOrderByCreateTime();
+        mGroups = connector.getAllGroupsOrderByCreateTime();
         // update the adapter for group list view
-        mGroupRecyclerListAdapter = new GroupRecyclerListAdapter(groups);
+        mGroupRecyclerListAdapter = new GroupRecyclerListAdapter(mGroups, this);
 
         // configure the recyclerView
         mRecyclerView = (RecyclerView) findViewById(R.id.recycler_view);
@@ -54,11 +62,15 @@ public class GroupChatsActivity extends AppCompatActivity {
         startActivity(i);
     }
 
-    // invoked when join button clicked
-    public  void joinGroup(View vie) {
-        Intent i = new Intent(this, JoinGroupActivity.class);
-        i.putExtra(ChatroomActivity.CHAT_ACTION, "join");
-        startActivity(i);
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.e(TAG, "GroupChats onResume called");
+        // refresh the chat group list
+        DatabaseConnector connector = DatabaseConnector.getInstance(this);
+        mGroups.clear();
+        mGroups.addAll(connector.getAllGroupsOrderByCreateTime());
+        mGroupRecyclerListAdapter.notifyDataSetChanged();
     }
 
     // TEST SECTION

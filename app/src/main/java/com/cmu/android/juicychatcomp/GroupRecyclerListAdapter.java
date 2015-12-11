@@ -11,6 +11,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.cmu.android.juicychatcomp.DB.DatabaseConnector;
 import com.cmu.android.juicychatcomp.DB.Group;
 import com.cmu.android.juicychatcomp.helper.ItemTouchHelperAdapter;
 import com.cmu.android.juicychatcomp.helper.ItemTouchHelperViewHolder;
@@ -32,14 +33,13 @@ public class GroupRecyclerListAdapter extends RecyclerView.Adapter<GroupRecycler
     };
 
     private final List<String> mItems = new ArrayList<>();
-    private final List<Group> mGroups = new ArrayList<>();
+    private final List<Group> mGroups;
 
-//    public GroupRecyclerListAdapter(String[] items) {
-//        mItems.addAll(Arrays.asList(items));
-//    }
+    private Context mContext;
 
-    public GroupRecyclerListAdapter(List<Group> groups) {
-        mGroups.addAll(groups);
+    public GroupRecyclerListAdapter(List<Group> groups, Context c) {
+        mGroups = groups;
+        mContext = c;
     }
 
     @Override
@@ -62,9 +62,17 @@ public class GroupRecyclerListAdapter extends RecyclerView.Adapter<GroupRecycler
 
     @Override
     public void onItemDismiss(int position) {
-//        mItems.remove(position);
+        // get group info
+        Group group = mGroups.get(position);
+        int groupCode = group.groupCode;
+
+        // TODO: remove the group from db
         mGroups.remove(position);
         notifyItemRemoved(position);
+        DatabaseConnector connector = DatabaseConnector.getInstance(mContext);
+        connector.deleteChatGroup(groupCode);
+        // TODO: tell chat server to decrement member of the group
+
     }
 
     @Override
